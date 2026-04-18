@@ -2,9 +2,6 @@ require('dotenv').config();
 
 /**
  * AUTH CONFIGURATION
- * 
- * This file contains all authentication-related configurations.
- * Modify these values to customize the authentication behavior.
  */
 
 module.exports = {

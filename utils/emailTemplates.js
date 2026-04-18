@@ -1,5 +1,5 @@
-const APP_NAME = 'YourApp';
-const SUPPORT_EMAIL = 'support@yourapp.com';
+const APP_NAME = 'Helplytics AI';
+const SUPPORT_EMAIL = 'Helplytics@yourapp.com';
 
 const baseTemplate = ({ title, content }) => {
   return `
@@ -67,7 +67,7 @@ const verifyEmailTemplate = (otp) => {
   });
 };
 
-// ✅ Reset Password (after user already initiated reset)
+// Reset Password (after user already initiated reset)
 const resetPasswordTemplate = (otp) => {
   return baseTemplate({
     title: 'Reset Your Password',
@@ -83,7 +83,7 @@ const resetPasswordTemplate = (otp) => {
   });
 };
 
-// ✅ Forgot Password (initial request)
+// Forgot Password (initial request)
 const forgotPasswordTemplate = (otp) => {
   return baseTemplate({
     title: 'Forgot Password Request',
