@@ -10,6 +10,7 @@ const {
   forgotPassword, 
   sendOTP,
   verifyOTP,
+  updateProfile,
 } = require('../controllers/auth.controller');
 
 // Import middlewares
@@ -48,5 +49,7 @@ router.post('/forgot-password', authLimiter, validate(emailSchema), forgotPasswo
 router.get('/me', protect, getMe);
 router.post('/logout', logout);
 router.put('/updatepassword', protect, validate(passwordChangeSchema), updatePassword);
+
+router.put('/update-profile', protect, updateProfile);
 
 module.exports = router;

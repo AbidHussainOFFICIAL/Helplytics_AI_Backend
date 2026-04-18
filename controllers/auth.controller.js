@@ -4,16 +4,24 @@ const sendEmail = require('../utils/email');
 const { verifyEmailTemplate, resetPasswordTemplate, forgotPasswordTemplate } = require('../utils/emailTemplates');
 const jwt = require('jsonwebtoken');
 const config = require('../config/auth.config');
-const { canRequestHelp } = require('../utils/permissions');
-const { canProvideHelp } = require('../utils/permissions');
+const { canRequestHelp, canProvideHelp } = require('../utils/permissions');
 
 
 // @desc    Register user
 // @route   POST /api/auth/signup
 exports.signup = async (req, res, next) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, role } = req.body;
   let user = await User.findOne({ email });
+
+  const allowedRoles = ['need_help', 'can_help', 'both'];
+
+if (role && !allowedRoles.includes(role)) {
+  return res.status(400).json({
+    success: false,
+    message: 'Invalid role selected',
+  });
+}
 
 if (user && !user.isEmailVerified) {
 
@@ -26,7 +34,8 @@ if (user && !user.isEmailVerified) {
       }
 
       user.name = name;
-      user.password = password;
+user.password = password;
+if (role) user.role = role;
 
       //reset attempts when re-signing
       user.otpAttempts = 0;
@@ -41,7 +50,12 @@ if (user && !user.isEmailVerified) {
 
     // New user
     else {
-      user = new User({ name, email, password });
+      user = new User({
+  name,
+  email,
+  password,
+  role: role || 'need_help',
+});
     }
 
     let otp;
@@ -268,14 +282,6 @@ if (purpose === 'verify') {
 
     await user.save();
 
-    //RESPONSE BASED ON PURPOSE
-    if (purpose === 'verify') {
-      return res.status(200).json({
-        success: true,
-        message: 'Email verified successfully.',
-      });
-    }
-
     if (purpose === 'reset') {
       return res.status(200).json({
         success: true,
@@ -413,21 +419,26 @@ exports.updatePassword = async (req, res, next) => {
 
 exports.updateProfile = async (req, res, next) => {
   try {
-    const { role, skills } = req.body;
+    const { role, skills, interests, location } = req.body;
 
     const user = await User.findById(req.user._id);
 
     const allowedRoles = ['need_help', 'can_help', 'both'];
 
-if (role && !allowedRoles.includes(role)) {
-  return res.status(400).json({
-    success: false,
-    message: 'Invalid role',
-  });
-}
+    if (role && !allowedRoles.includes(role)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid role',
+      });
+    }
 
-if (role) user.role = role;
+    if (role) user.role = role;
     if (skills) user.skills = skills;
+    if (interests) user.interests = interests;
+    if (location) user.location = location;
+
+    // mark onboarding complete
+    user.isOnboarded = true;
 
     await user.save();
 

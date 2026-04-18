@@ -35,6 +35,7 @@ const UserSchema = new mongoose.Schema({
     type: String,
     enum: ['need_help', 'can_help', 'both', 'admin'],
     default: 'need_help',
+    required: true,
   },
 
   skills: [
@@ -47,6 +48,18 @@ const UserSchema = new mongoose.Schema({
     }
   }
 ],
+
+interests: [String],
+
+location: {
+  city: String,
+  country: String,
+},
+
+isOnboarded: {
+  type: Boolean,
+  default: false,
+},
 
   trustScore: {
     type: Number,

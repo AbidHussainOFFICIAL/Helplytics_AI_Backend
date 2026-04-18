@@ -22,6 +22,10 @@ const signupSchema = z.object({
     .string()
     .min(6, 'Password must be at least 6 characters')
     .max(100, 'Password must not exceed 100 characters'),
+
+    role: z
+    .enum(['need_help', 'can_help', 'both'])
+    .optional(),
 });
 
 // Login Validation Schema
