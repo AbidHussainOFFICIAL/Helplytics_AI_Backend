@@ -15,7 +15,7 @@ exports.getMe = async (req, res, next) => {
 // @desc Update profile (onboarding)
 exports.updateProfile = async (req, res, next) => {
   try {
-    const { role, skills, interests, location } = req.body;
+    const { name, role, skills, interests, location } = req.body;
 
     const user = await User.findById(req.user._id);
 
@@ -28,6 +28,7 @@ exports.updateProfile = async (req, res, next) => {
       });
     }
 
+    if (name) user.name = name;
     if (role) user.role = role;
     if (skills) user.skills = skills;
     if (interests) user.interests = interests;
