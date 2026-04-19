@@ -5,7 +5,7 @@ Description: ${data.description}
 
 Return:
 {
-  "category": "",
+  "category": "One of: Web Development, Design, Career, Data Science, Marketing, Writing, General",
   "tags": []
 }
 `;
