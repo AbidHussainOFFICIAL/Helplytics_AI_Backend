@@ -54,6 +54,10 @@ const RequestSchema = new mongoose.Schema(
     },
 
     completedAt: Date,
+    location: {
+      city: String,
+      country: String,
+    },
   },
   { timestamps: true }
 );

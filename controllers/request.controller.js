@@ -28,12 +28,25 @@ exports.createRequest = async (req, res, next) => {
 // @desc Get all requests (filterable)
 exports.getRequests = async (req, res, next) => {
   try {
-    const { category, urgency, status } = req.query;
+    const { category, urgency, status, skills, location } = req.query;
 
     const filter = {};
-    if (category) filter.category = category;
-    if (urgency) filter.urgency = urgency;
-    if (status) filter.status = status;
+    if (category && category !== 'all') filter.category = category;
+    if (urgency && urgency !== 'all') filter.urgency = urgency;
+    if (status && status !== 'all') filter.status = status;
+    
+    // Skill filtering (searches in tags)
+    if (skills) {
+      filter.tags = { $in: skills.split(',').map(s => new RegExp(s.trim(), 'i')) };
+    }
+
+    // Location filtering
+    if (location) {
+      filter.$or = [
+        { 'location.city': { $regex: location, $options: 'i' } },
+        { 'location.country': { $regex: location, $options: 'i' } }
+      ];
+    }
 
     const requests = await Request.find(filter)
       .populate('createdBy', 'name role')
@@ -90,6 +103,21 @@ exports.canHelp = async (req, res, next) => {
 
     await request.save();
 
+    // Create Notification for the requester
+    try {
+      const Notification = require('../models/Notification');
+      await Notification.create({
+        recipient: request.createdBy,
+        sender: req.user._id,
+        type: 'help_offered',
+        title: 'New help offered',
+        message: `${req.user.name} has offered to help with your request: "${request.title}"`,
+        relatedId: request._id
+      });
+    } catch (nErr) {
+      console.error("Failed to create notification", nErr);
+    }
+
     res.status(200).json({
       success: true,
       message: 'You are now helping',
@@ -127,6 +155,22 @@ await User.updateMany(
   { _id: { $in: request.helpers } },
   { $inc: { trustScore: 5, contributions: 1 } }
 );
+
+    // Create Notifications for helpers
+    try {
+      const Notification = require('../models/Notification');
+      const helperNotifications = request.helpers.map(helperId => ({
+        recipient: helperId,
+        sender: req.user._id,
+        type: 'status_change',
+        title: 'Request completed',
+        message: `The request "${request.title}" you helped with has been marked as completed. You earned +5 trust score!`,
+        relatedId: request._id
+      }));
+      await Notification.insertMany(helperNotifications);
+    } catch (nErr) {
+      console.error("Failed to create completion notifications", nErr);
+    }
 
     res.status(200).json({
       success: true,
