@@ -14,6 +14,9 @@ const { apiLimiter } = require('./middlewares/rateLimiter.middleware');
 
 const app = express();
 
+// Trust proxy for Render/Vercel (important for rate limiting)
+app.set('trust proxy', 1);
+
 // 1. CONNECT TO DATABASE FIRST
 connectDB();
 
