@@ -30,8 +30,22 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 // CORS - Configure based on your frontend URL
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://helplytics-ai-frontend-one.vercel.app',
+  process.env.CLIENT_URL?.replace(/\/$/, '') // Remove trailing slash if present
+].filter(Boolean);
+
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'https://helplytics-ai-frontend-one.vercel.app/',
+  origin: function (origin, callback) {
+    // allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
   credentials: true, // Allow cookies
 }));
 
