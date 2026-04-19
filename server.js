@@ -31,7 +31,7 @@ app.use(cookieParser());
 
 // CORS - Configure based on your frontend URL
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
+  origin: process.env.CLIENT_URL || 'https://helplytics-ai-frontend-one.vercel.app/',
   credentials: true, // Allow cookies
 }));
 
