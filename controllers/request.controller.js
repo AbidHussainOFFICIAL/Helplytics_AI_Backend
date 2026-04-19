@@ -84,18 +84,15 @@ exports.canHelp = async (req, res, next) => {
 
     // prevent self-help (AFTER fetching request)
     if (request.createdBy.toString() === req.user._id.toString()) {
-      return res.status(400).json({
-        success: false,
-        message: 'You cannot help your own request',
-      });
+      return res.status(400).json({ success: false, message: 'You cannot help your own request' });
     }
 
-    // prevent duplicate help
-    if (request.helpers.includes(req.user._id)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Already helping',
-      });
+    if (req.user.role === 'need_help') {
+      return res.status(403).json({ success: false, message: 'Only helpers can offer help' });
+    }
+
+    if (request.helpers.some(h => h.toString() === req.user._id.toString())) {
+      return res.status(400).json({ success: false, message: 'You are already a helper' });
     }
 
     request.helpers.push(req.user._id);
