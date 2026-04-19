@@ -6,7 +6,7 @@ const { comparePassword } = require('../auth.utils');
 exports.getMe = async (req, res, next) => {
   try {
     const user = await User.findById(req.user._id);
-    res.status(200).json({ success: true, data: user });
+    res.status(200).json({ success: true, user });
   } catch (err) {
     next(err);
   }
