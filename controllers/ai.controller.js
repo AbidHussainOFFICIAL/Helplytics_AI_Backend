@@ -52,7 +52,14 @@ exports.autoCategorize = async (req, res, next) => {
     const prompt = autoCategorizePrompt(req.body);
     const response = await askAI(prompt);
 
-    res.json({ success: true, data: JSON.parse(response) });
+    try {
+      const parsedData = JSON.parse(response);
+      res.json({ success: true, data: parsedData });
+    } catch (parseErr) {
+      // If JSON parsing fails, return the response as string
+      console.warn('[AI] JSON parsing failed for autoCategorize:', parseErr.message);
+      res.json({ success: true, data: { raw: response } });
+    }
   } catch (err) {
     next(err);
   }

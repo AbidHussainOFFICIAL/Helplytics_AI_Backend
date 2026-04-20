@@ -53,8 +53,11 @@ app.use(cors({
 }));
 
 // Rate limiting (apply to all routes except AI)
+// IMPORTANT: Skip rate limiting for AI routes to avoid 429 errors
 app.use((req, res, next) => {
-  if (req.path.startsWith('/api/ai')) {
+  // Check both req.path and req.originalUrl for reliability
+  const path = req.path || req.originalUrl || '';
+  if (path.startsWith('/api/ai/')) {
     return next();
   }
   apiLimiter(req, res, next);
@@ -108,9 +111,25 @@ app.use((req, res) => {
 // Global Error Handler
 app.use((err, req, res, next) => {
   console.error('Error:', err);
-  res.status(err.status || 500).json({
+  
+  // Determine status code
+  let status = err.status || err.statusCode || 500;
+  
+  // Handle specific error types
+  if (err.message && err.message.includes('Rate limit')) {
+    status = 429;
+  } else if (err.message && err.message.includes('Unauthorized')) {
+    status = 401;
+  } else if (err.message && err.message.includes('Forbidden')) {
+    status = 403;
+  } else if (err.message && err.message.includes('Not found')) {
+    status = 404;
+  }
+  
+  res.status(status).json({
     success: false,
     message: err.message || 'Internal server error',
+    ...(process.env.NODE_ENV === 'development' && { error: err.stack })
   });
 });
 

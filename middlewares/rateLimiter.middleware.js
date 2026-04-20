@@ -13,8 +13,16 @@ const apiLimiter = rateLimit({
     success: false,
     message: config.rateLimit.message,
   },
+  skip: (req) => {
+    // Always skip rate limiting for AI routes
+    return req.path.startsWith('/api/ai/');
+  },
   standardHeaders: true, // Return rate limit info in headers
   legacyHeaders: false,
+  // Use IP + user agent for better identification
+  keyGenerator: (req) => {
+    return `${req.ip || req.connection.remoteAddress}-${req.get('user-agent')}`;
+  }
 });
 
 // Strict Rate Limiter for Auth Routes (Login/Signup)

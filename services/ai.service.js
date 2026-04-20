@@ -13,6 +13,16 @@
 
 const OpenAI = require('openai');
 
+// ── Custom error class for better error handling ────────────────────────────
+class AIServiceError extends Error {
+  constructor(message, status = 503) {
+    super(message);
+    this.status = status;
+    this.statusCode = status;
+    this.name = 'AIServiceError';
+  }
+}
+
 // ── Provider definitions ────────────────────────────────────────────────────
 const PROVIDERS = [
   {
@@ -59,18 +69,24 @@ function isRateLimitError(err) {
 exports.askAI = async (prompt, options = {}) => {
   const { systemPrompt = null, temperature = 0.7, jsonMode = false } = options;
 
+  // Validate input
+  if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
+    throw new AIServiceError('Prompt cannot be empty', 400);
+  }
+
   const messages = [];
   if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
   messages.push({ role: 'user', content: prompt });
 
   let lastError;
+  const availableProviders = PROVIDERS.filter(p => p.apiKey);
 
-  for (const provider of PROVIDERS) {
-    if (!provider.apiKey) {
-      console.warn(`[AI] Skipping ${provider.name} — no API key configured.`);
-      continue;
-    }
+  // Check if any providers are configured
+  if (availableProviders.length === 0) {
+    throw new AIServiceError('No AI providers configured. Please set API keys.', 503);
+  }
 
+  for (const provider of availableProviders) {
     try {
       console.log(`[AI] Trying provider: ${provider.name}`);
 
@@ -114,5 +130,6 @@ exports.askAI = async (prompt, options = {}) => {
 
   // All providers failed
   console.error('[AI] All providers exhausted.');
-  throw lastError || new Error('All AI providers are unavailable.');
+  const errorMsg = lastError?.message || 'All AI providers are unavailable.';
+  throw new AIServiceError(errorMsg, 503);
 };
