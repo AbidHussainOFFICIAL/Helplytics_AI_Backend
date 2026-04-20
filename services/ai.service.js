@@ -1,15 +1,118 @@
+/**
+ * AI Service — Multi-Provider with Automatic Key Rotation
+ *
+ * Priority order:
+ *   1. xAI  (Grok)       — base_url: https://api.x.ai/v1
+ *   2. Groq              — base_url: https://api.groq.com/openai/v1
+ *   3. OpenRouter        — base_url: https://openrouter.ai/api/v1
+ *
+ * On any rate-limit (429) or quota-exhausted error the service
+ * automatically tries the next provider.  If all providers are
+ * exhausted it throws so the controller can return a 503.
+ */
+
 const OpenAI = require('openai');
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// ── Provider definitions ────────────────────────────────────────────────────
+const PROVIDERS = [
+  {
+    name: 'xAI (Grok)',
+    apiKey: process.env.XAI_API_KEY,
+    baseURL: 'https://api.x.ai/v1',
+    model: 'grok-3-mini',           // fast, low-cost Grok model
+  },
+  {
+    name: 'Groq',
+    apiKey: process.env.GROQ_API_KEY,
+    baseURL: 'https://api.groq.com/openai/v1',
+    model: 'llama3-70b-8192',       // Groq's fastest large model
+  },
+  {
+    name: 'OpenRouter',
+    apiKey: process.env.OPENROUTER_API_KEY,
+    baseURL: 'https://openrouter.ai/api/v1',
+    model: 'mistralai/mistral-7b-instruct', // free-tier friendly
+    defaultHeaders: {
+      'HTTP-Referer': process.env.CLIENT_URL || 'http://localhost:3000',
+      'X-Title': 'HelpHub AI',
+    },
+  },
+];
 
-exports.askAI = async (prompt) => {
-  const response = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages: [{ role: 'user', content: prompt }],
-    temperature: 0.7,
-  });
+// ── Rate-limit detection helpers ────────────────────────────────────────────
+const RATE_LIMIT_STATUS_CODES = new Set([429]);
+const RATE_LIMIT_MESSAGES = [
+  'rate limit',
+  'quota',
+  'too many requests',
+  'exceeded',
+  'limit reached',
+];
 
-  return response.choices[0].message.content;
+function isRateLimitError(err) {
+  if (err?.status && RATE_LIMIT_STATUS_CODES.has(err.status)) return true;
+  const msg = (err?.message || '').toLowerCase();
+  return RATE_LIMIT_MESSAGES.some((kw) => msg.includes(kw));
+}
+
+// ── Core ask function with rotation ────────────────────────────────────────
+exports.askAI = async (prompt, options = {}) => {
+  const { systemPrompt = null, temperature = 0.7, jsonMode = false } = options;
+
+  const messages = [];
+  if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
+  messages.push({ role: 'user', content: prompt });
+
+  let lastError;
+
+  for (const provider of PROVIDERS) {
+    if (!provider.apiKey) {
+      console.warn(`[AI] Skipping ${provider.name} — no API key configured.`);
+      continue;
+    }
+
+    try {
+      console.log(`[AI] Trying provider: ${provider.name}`);
+
+      const client = new OpenAI({
+        apiKey: provider.apiKey,
+        baseURL: provider.baseURL,
+        defaultHeaders: provider.defaultHeaders || {},
+      });
+
+      const requestParams = {
+        model: provider.model,
+        messages,
+        temperature,
+      };
+
+      if (jsonMode) {
+        requestParams.response_format = { type: 'json_object' };
+      }
+
+      const response = await client.chat.completions.create(requestParams);
+      const content = response.choices[0].message.content;
+
+      console.log(`[AI] Success via ${provider.name}`);
+      return content;
+    } catch (err) {
+      lastError = err;
+
+      if (isRateLimitError(err)) {
+        console.warn(
+          `[AI] Rate limit hit on ${provider.name}. Rotating to next provider...`
+        );
+        continue; // try next provider
+      }
+
+      // Non-rate-limit errors: log and still try next provider as a fallback
+      console.error(
+        `[AI] Error on ${provider.name}: ${err?.message || err}. Trying next...`
+      );
+    }
+  }
+
+  // All providers failed
+  console.error('[AI] All providers exhausted.');
+  throw lastError || new Error('All AI providers are unavailable.');
 };
