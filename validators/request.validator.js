@@ -11,7 +11,7 @@ const createRequestSchema = z.object({
   .max(50, 'Category too long'),
 
   urgency: z
-    .enum(['low', 'medium', 'high'])
+    .enum(['low', 'medium', 'high', 'critical'])
     .optional(),
 });
 
