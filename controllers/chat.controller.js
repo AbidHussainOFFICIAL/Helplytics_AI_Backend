@@ -65,6 +65,25 @@ exports.sendMessage = async (req, res, next) => {
       text,
     });
 
+    // Create notifications for other participants
+    try {
+      const Notification = require('../models/Notification');
+      const otherParticipants = chat.participants.filter(p => p.toString() !== req.user._id.toString());
+
+      for (const participantId of otherParticipants) {
+        await Notification.create({
+          recipient: participantId,
+          sender: req.user._id,
+          type: 'system',
+          title: 'New message',
+          message: `${req.user.name} sent you a message`,
+          relatedId: chat._id
+        });
+      }
+    } catch (nErr) {
+      console.error("Failed to create message notifications", nErr);
+    }
+
     res.status(201).json({
       success: true,
       message,
